@@ -13,7 +13,7 @@ import java.util.*;
  */
 public class OptimalOpenHashMap<K, V> implements Map<K, V> {
 
-    static final float DEFAULT_LOAD_FACTOR = 0.8f; // TODO tweak, should allow higher load
+    static final float DEFAULT_LOAD_FACTOR = 0.85f; // TODO tweak, should allow higher load
     static final int DEFAULT_INITIAL_CAPACITY = 1 << 4; // 16
     static final int MAXIMUM_CAPACITY = 1 << 30;
 
@@ -69,7 +69,7 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
     public V get(Object key) {
         if (key == null)
             return null;
-        int hash = strongHash(key);
+        int hash = hash(key);
 
         int idx = funnelProbe(key, hash);
         if(idx == -1) return null;
@@ -83,41 +83,36 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
 
     @Override
     public V put(K key, V value) {
+        if(key == null) throw new NullPointerException("key is null");
         if ((size + tombstones + 1.0) / capacity > loadFactor) {
             if (capacity == MAXIMUM_CAPACITY) {
                 throw new IllegalStateException("Cannot resize: maximum capacity reached (" + MAXIMUM_CAPACITY + ")");
             }
             resize();
         }
-        int hash = strongHash(key);
-        int tombstoneIndex = -1;
+        int hash = hash(key);
         Entry<K, V>[] tab = table;
         int idx = funnelProbe(key, hash);
         if(idx != -1) {
             Entry<K, V> e = tab[idx];
             if (e == null) {
-                if (tombstoneIndex != -1)
-                    idx = tombstoneIndex;
                 tab[idx] = new Entry<>(key, value, hash);
                 size++;
                 return null;
-            } else if (e == TOMBSTONE) {
-                if (tombstoneIndex == -1)
-                    tombstoneIndex = idx;
             } else if (e.hash == hash && Objects.equals(e.key, key)) {
                 V oldVal = e.value;
                 e.value = value;
                 return oldVal;
             }
         }
-
         resize();
         return put(key, value);
     }
 
     @Override
     public V remove(Object key) {
-        int hash = strongHash(key);
+        if(key == null) throw new NullPointerException("key is null");
+        int hash = hash(key);
         int idx = funnelProbe(key, hash);
         if(idx == -1) return null;
         Entry<K, V> e = table[idx];
@@ -159,40 +154,68 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
         tombstones = 0;
     }
 
+    /**
+     * Divide the space into blocks, for example a 128 table would have:
+     * - 64 spots at level 1
+     * - 32 spots at level 2
+     * - 16 spots at level 3
+     * - 8 spots at level 4
+     * - 4 spots at level 5
+     * - 2 spots at level 6
+     * - 1 spot at level 7
+     * - 1 spot at level 8
+     *
+     * TODO: This might be sub-optimal, there is quite a long tail, we should stop after N-levels and return to linear probing here?
+     * There might be better ways to split this up.
+     *
+     * @param key
+     * @param hash
+     * @return
+     */
     public int funnelProbe(Object key, int hash) {
-
-        int capacity = table.length; // capacity is a power of 2
-        int offset = 0;              // starting index for the current level
+        int capacity = table.length;
+        int offset = 0;
         int levelWidth = capacity >>> 1; // first level size (half the table)
         int attempt = 0;
 
         while (levelWidth > 0) {
-            if (attempt < levelWidth) {
-                // Compute local attempt within this level.
-                int localAttempt = (hash + attempt) & (levelWidth - 1);
+            int localAttempt = (hash + attempt) & (levelWidth - 1);
+            int idx = offset + localAttempt;
 
-                int idx = offset + localAttempt;
-                Entry<K, V> entry = table[idx];
-                if (entry == null ||
-                        (entry != TOMBSTONE && entry.hash == hash && key.equals(entry.key))) {
-                    return idx;
-                }
+            Entry<K, V> entry = table[idx];
+            if (entry == null || (entry != TOMBSTONE && entry.hash == hash && key.equals(entry.key))) {
+                return idx;
             }
-            // If the attempt exceeds the current level, subtract the level’s width and move to the next level.
+
+            // Move to next level
             attempt -= levelWidth;
             offset += levelWidth;
-            levelWidth >>>= 1; // Next level size is half of the current level.
+            levelWidth >>>= 1;
         }
 
-        // If no level found, return -1 (table is too full for our probing strategy)
         return -1;
     }
 
-    // XOR-shift mixing hash function.
-    private int strongHash(Object key) {
-        int h = key.hashCode();
-        h ^= (h >>> 16);
-        return h & 0x7fffffff;
+
+    /**
+     * Computes key.hashCode() and spreads (XORs) higher bits of hash
+     * to lower.  Because the table uses power-of-two masking, sets of
+     * hashes that vary only in bits above the current mask will
+     * always collide. (Among known examples are sets of Float keys
+     * holding consecutive whole numbers in small tables.)  So we
+     * apply a transform that spreads the impact of higher bits
+     * downward. There is a tradeoff between speed, utility, and
+     * quality of bit-spreading. Because many common sets of hashes
+     * are already reasonably distributed (so don't benefit from
+     * spreading), and because we use trees to handle large sets of
+     * collisions in bins, we just XOR some shifted bits in the
+     * cheapest possible way to reduce systematic lossage, as well as
+     * to incorporate impact of the highest bits that would otherwise
+     * never be used in index calculations because of table bounds.
+     */
+    static final int hash(Object key) {
+        int h;
+        return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
     }
 
     @SuppressWarnings("unchecked")
@@ -211,12 +234,8 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
         for (Entry<K, V> e : oldTable) {
             if (e != null && e != TOMBSTONE) {
                 int idx = funnelProbe(e.key, e.hash);
-                if (table[idx] == null) {
-                    table[idx] = e;
-                    newSize++;
-                } else {
-                    throw new IllegalStateException("Resize failed");
-                }
+                table[idx] = e;
+                newSize++;
             }
         }
         size = newSize;
