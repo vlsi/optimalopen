@@ -39,7 +39,7 @@ Deletion time: 553 ms
 OptimalOpenHashMap full benchmark total time: 4343 ms
 ```
 
-These results indicate that `OptimalOpenHashMap` might be a viable option, showing faster retrieval and deletion times.
+These results indicate that `OptimalOpenHashMap` might be a viable option, showing faster retrieval and deletion times, with much better memory utilization (using a load factor of 90% instead of 75%).
 
 ### Contributing
 
