@@ -67,8 +67,7 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
      */
     @Override
     public V get(Object key) {
-        if (key == null)
-            return null;
+        if (key == null) return null;
         int hash = hash(key);
 
         int idx = funnelProbe(key, hash);
@@ -165,21 +164,19 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
      * - 1 spot at level 7
      * - 1 spot at level 8
      *
-     * TODO: This might be sub-optimal, there is quite a long tail, we should stop after N-levels and return to linear probing here?
-     * There might be better ways to split this up.
+     * Instead of going all the way down to 1 slot, we **stop after a fixed depth** and switch
+     * to **linear probing** to avoid excessive probing depth.
      *
-     * @param key
-     * @param hash
-     * @return
+     * @param key   The key to probe for.
+     * @param hash  The hashed value of the key.
+     * @return      The computed index, or -1 if no available slot is found.
      */
     public int funnelProbe(Object key, int hash) {
-        int capacity = table.length;
-        int offset = 0;
         int levelWidth = capacity >>> 1; // first level size (half the table)
-        int attempt = 0;
+        int offset = 0;
 
         while (levelWidth > 0) {
-            int localAttempt = (hash + attempt) & (levelWidth - 1);
+            int localAttempt = hash & (levelWidth - 1);
             int idx = offset + localAttempt;
 
             Entry<K, V> entry = table[idx];
@@ -188,14 +185,12 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
             }
 
             // Move to next level
-            attempt -= levelWidth;
             offset += levelWidth;
             levelWidth >>>= 1;
         }
 
         return -1;
     }
-
 
     /**
      * Computes key.hashCode() and spreads (XORs) higher bits of hash
@@ -215,7 +210,7 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
      */
     static final int hash(Object key) {
         int h;
-        return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
+        return (h = key.hashCode()) ^ (h >>> 16);
     }
 
     @SuppressWarnings("unchecked")
@@ -223,7 +218,7 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
         if (capacity >= MAXIMUM_CAPACITY) {
             throw new IllegalStateException("Cannot resize: maximum capacity reached (" + MAXIMUM_CAPACITY + ")");
         }
-        int newCapacity = capacity * 2;
+        int newCapacity = capacity << 1;
         if (newCapacity > MAXIMUM_CAPACITY)
             newCapacity = MAXIMUM_CAPACITY;
         Entry<K, V>[] oldTable = table;
