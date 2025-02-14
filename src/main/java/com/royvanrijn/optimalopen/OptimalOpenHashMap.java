@@ -52,8 +52,8 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
     @SuppressWarnings("unchecked")
     private Entry<K, V>[] table = (Entry<K, V>[]) new Entry[DEFAULT_INITIAL_CAPACITY];
     private int size = 0;
+    private int capacity = DEFAULT_INITIAL_CAPACITY;
     private final float loadFactor = DEFAULT_LOAD_FACTOR;
-    private int modCount = 0;
     // Count of tombstones in the table.
     private int tombstones = 0;
     // Increase cleanup threshold to 50% to delay expensive cleanup.
@@ -64,7 +64,6 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
         if (key == null)
             return null;
         int hash = strongHash(key);
-        int capacity = table.length;
         int mask = capacity - 1;
         for (int i = 0; i < capacity; i++) {
             int idx = probeIndex(hash, i, mask);
@@ -79,23 +78,24 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
 
     @Override
     public V put(K key, V value) {
-        if ((size + tombstones + 1.0) / table.length > loadFactor) {
+        if ((size + tombstones + 1.0) / capacity > loadFactor) {
+            if (capacity == MAXIMUM_CAPACITY) {
+                throw new IllegalStateException("Cannot resize: maximum capacity reached (" + MAXIMUM_CAPACITY + ")");
+            }
             resize();
         }
         int hash = strongHash(key);
-        int capacity = table.length;
         int mask = capacity - 1;
         int tombstoneIndex = -1;
         Entry<K, V>[] tab = table;
         for (int i = 0; i < capacity; i++) {
-            int idx = (hash + i) & mask;
+            int idx = probeIndex(hash, i, mask);
             Entry<K, V> e = tab[idx];
             if (e == null) {
                 if (tombstoneIndex != -1)
                     idx = tombstoneIndex;
                 tab[idx] = new Entry<>(key, value, hash);
                 size++;
-                modCount++;
                 return null;
             } else if (e == TOMBSTONE) {
                 if (tombstoneIndex == -1)
@@ -112,7 +112,6 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
     @Override
     public V remove(Object key) {
         int hash = strongHash(key);
-        int capacity = table.length;
         int mask = capacity - 1;
         for (int i = 0; i < capacity; i++) {
             int idx = probeIndex(hash, i, mask);
@@ -124,7 +123,6 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
                 table[idx] = (Entry<K, V>) TOMBSTONE;
                 size--;
                 tombstones++;
-                modCount++;
                 if (((float) tombstones / capacity) > TOMBSTONE_THRESHOLD) {
                     cleanup();
                 }
@@ -140,14 +138,13 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
     @SuppressWarnings("unchecked")
     private void cleanup() {
         Entry<K, V>[] oldTable = table;
-        int capacity = table.length;
         int mask = capacity - 1;
         Entry<K, V>[] newTable = (Entry<K, V>[]) new Entry[capacity];
         int newSize = 0;
         for (Entry<K, V> e : oldTable) {
             if (e != null && e != TOMBSTONE) {
                 for (int i = 0; i < capacity; i++) {
-                    int idx = (e.hash + i) & mask;
+                    int idx = probeIndex(e.hash, i, mask);
                     if (newTable[idx] == null) {
                         newTable[idx] = e;
                         newSize++;
@@ -159,7 +156,6 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
         table = newTable;
         size = newSize;
         tombstones = 0;
-        modCount++;
     }
 
     // Linear probing: (baseHash + attempt) & mask, where mask = capacity - 1.
@@ -176,14 +172,15 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
 
     @SuppressWarnings("unchecked")
     private void resize() {
-        if (table.length >= MAXIMUM_CAPACITY) {
+        if (capacity >= MAXIMUM_CAPACITY) {
             throw new IllegalStateException("Cannot resize: maximum capacity reached (" + MAXIMUM_CAPACITY + ")");
         }
-        int capacity = table.length * 2;
-        if (capacity > MAXIMUM_CAPACITY)
-            capacity = MAXIMUM_CAPACITY;
+        int newCapacity = capacity * 2;
+        if (newCapacity > MAXIMUM_CAPACITY)
+            newCapacity = MAXIMUM_CAPACITY;
         Entry<K, V>[] oldTable = table;
-        table = (Entry<K, V>[]) new Entry[capacity];
+        table = (Entry<K, V>[]) new Entry[newCapacity];
+        capacity = newCapacity;
         int mask = capacity - 1;
         int newSize = 0;
         tombstones = 0;
@@ -200,7 +197,6 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
             }
         }
         size = newSize;
-        modCount++;
     }
 
     @Override
@@ -209,6 +205,7 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
         Entry<K, V>[] newTable = (Entry<K, V>[]) new Entry[DEFAULT_INITIAL_CAPACITY];
         table = newTable;
         size = 0;
+        capacity = DEFAULT_INITIAL_CAPACITY;
         tombstones = 0;
     }
 
