@@ -13,7 +13,7 @@ import java.util.*;
  */
 public class OptimalOpenHashMap<K, V> implements Map<K, V> {
 
-    static final float DEFAULT_LOAD_FACTOR = 0.95f; // allows higher load for better memory utilization
+    static final float DEFAULT_LOAD_FACTOR = 0.8f; // TODO tweak, should allow higher load
     static final int DEFAULT_INITIAL_CAPACITY = 1 << 4; // 16
     static final int MAXIMUM_CAPACITY = 1 << 30;
 
@@ -59,20 +59,25 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
     // Increase cleanup threshold to 50% to delay expensive cleanup.
     private static final float TOMBSTONE_THRESHOLD = 0.5f;
 
+    /**
+     * Table is a single array but we're filling it using the funnel method, in levels.
+     *
+     * @param key the key whose associated value is to be returned
+     * @return
+     */
     @Override
     public V get(Object key) {
         if (key == null)
             return null;
         int hash = strongHash(key);
-        int mask = capacity - 1;
-        for (int i = 0; i < capacity; i++) {
-            int idx = probeIndex(hash, i, mask);
-            Entry<K, V> e = table[idx];
-            if (e == null)
-                return null;
-            if (e != TOMBSTONE && e.hash == hash && Objects.equals(e.key, key))
-                return e.value;
-        }
+
+        int idx = funnelProbe(key, hash);
+        if(idx == -1) return null;
+        Entry<K, V> e = table[idx];
+        if (e == null)
+            return null;
+        if (e != TOMBSTONE && e.hash == hash && Objects.equals(e.key, key))
+            return e.value;
         return null;
     }
 
@@ -85,11 +90,10 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
             resize();
         }
         int hash = strongHash(key);
-        int mask = capacity - 1;
         int tombstoneIndex = -1;
         Entry<K, V>[] tab = table;
-        for (int i = 0; i < capacity; i++) {
-            int idx = probeIndex(hash, i, mask);
+        int idx = funnelProbe(key, hash);
+        if(idx != -1) {
             Entry<K, V> e = tab[idx];
             if (e == null) {
                 if (tombstoneIndex != -1)
@@ -106,28 +110,28 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
                 return oldVal;
             }
         }
-        throw new IllegalStateException("Table is full");
+
+        resize();
+        return put(key, value);
     }
 
     @Override
     public V remove(Object key) {
         int hash = strongHash(key);
-        int mask = capacity - 1;
-        for (int i = 0; i < capacity; i++) {
-            int idx = probeIndex(hash, i, mask);
-            Entry<K, V> e = table[idx];
-            if (e == null)
-                return null;
-            if (e != TOMBSTONE && e.hash == hash && Objects.equals(e.key, key)) {
-                V oldVal = e.value;
-                table[idx] = (Entry<K, V>) TOMBSTONE;
-                size--;
-                tombstones++;
-                if (((float) tombstones / capacity) > TOMBSTONE_THRESHOLD) {
-                    cleanup();
-                }
-                return oldVal;
+        int idx = funnelProbe(key, hash);
+        if(idx == -1) return null;
+        Entry<K, V> e = table[idx];
+        if (e == null)
+            return null;
+        if (e != TOMBSTONE && e.hash == hash && Objects.equals(e.key, key)) {
+            V oldVal = e.value;
+            table[idx] = (Entry<K, V>) TOMBSTONE;
+            size--;
+            tombstones++;
+            if (((float) tombstones / capacity) > TOMBSTONE_THRESHOLD) {
+                cleanup();
             }
+            return oldVal;
         }
         return null;
     }
@@ -138,18 +142,15 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
     @SuppressWarnings("unchecked")
     private void cleanup() {
         Entry<K, V>[] oldTable = table;
-        int mask = capacity - 1;
         Entry<K, V>[] newTable = (Entry<K, V>[]) new Entry[capacity];
         int newSize = 0;
         for (Entry<K, V> e : oldTable) {
             if (e != null && e != TOMBSTONE) {
-                for (int i = 0; i < capacity; i++) {
-                    int idx = probeIndex(e.hash, i, mask);
-                    if (newTable[idx] == null) {
-                        newTable[idx] = e;
-                        newSize++;
-                        break;
-                    }
+                int idx = funnelProbe(e.key, e.hash);
+                if (newTable[idx] == null) {
+                    newTable[idx] = e;
+                    newSize++;
+                    break;
                 }
             }
         }
@@ -158,9 +159,33 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
         tombstones = 0;
     }
 
-    // Linear probing: (baseHash + attempt) & mask, where mask = capacity - 1.
-    private int probeIndex(int baseHash, int attempt, int mask) {
-        return (baseHash + attempt) & mask;
+    public int funnelProbe(Object key, int hash) {
+
+        int capacity = table.length; // capacity is a power of 2
+        int offset = 0;              // starting index for the current level
+        int levelWidth = capacity >>> 1; // first level size (half the table)
+        int attempt = 0;
+
+        while (levelWidth > 0) {
+            if (attempt < levelWidth) {
+                // Compute local attempt within this level.
+                int localAttempt = (hash + attempt) & (levelWidth - 1);
+
+                int idx = offset + localAttempt;
+                Entry<K, V> entry = table[idx];
+                if (entry == null ||
+                        (entry != TOMBSTONE && entry.hash == hash && key.equals(entry.key))) {
+                    return idx;
+                }
+            }
+            // If the attempt exceeds the current level, subtract the level’s width and move to the next level.
+            attempt -= levelWidth;
+            offset += levelWidth;
+            levelWidth >>>= 1; // Next level size is half of the current level.
+        }
+
+        // If no level found, return -1 (table is too full for our probing strategy)
+        return -1;
     }
 
     // XOR-shift mixing hash function.
@@ -181,18 +206,16 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V> {
         Entry<K, V>[] oldTable = table;
         table = (Entry<K, V>[]) new Entry[newCapacity];
         capacity = newCapacity;
-        int mask = capacity - 1;
         int newSize = 0;
         tombstones = 0;
         for (Entry<K, V> e : oldTable) {
             if (e != null && e != TOMBSTONE) {
-                for (int i = 0; i < capacity; i++) {
-                    int idx = (e.hash + i) & mask;
-                    if (table[idx] == null) {
-                        table[idx] = e;
-                        newSize++;
-                        break;
-                    }
+                int idx = funnelProbe(e.key, e.hash);
+                if (table[idx] == null) {
+                    table[idx] = e;
+                    newSize++;
+                } else {
+                    throw new IllegalStateException("Resize failed");
                 }
             }
         }

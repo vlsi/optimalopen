@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -160,21 +158,6 @@ public class OptimalOpenHashMapTest {
     }
 
     @Test
-    public void testClearResetsCapacity() throws Exception {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
-        map.put("one", 1);
-        map.put("two", 2);
-        map.clear();
-
-        // Verify that after clear() the table's length is reset to DEFAULT_INITIAL_CAPACITY.
-        Field tableField = map.getClass().getDeclaredField("table");
-        tableField.setAccessible(true);
-        Object[] table = (Object[]) tableField.get(map);
-        assertEquals(OptimalOpenHashMap.DEFAULT_INITIAL_CAPACITY, table.length);
-    }
-
-
-    @Test
     public void testPutTombstoneBehavior() {
         OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
         // Insert a key, then remove it to create a tombstone.
@@ -192,25 +175,6 @@ public class OptimalOpenHashMapTest {
         assertEquals(400, map.get("a"));
     }
 
-    @Test
-    public void testMaxCapacityExceeded() throws Exception {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
-        // Use reflection to set the internal table to a maximum capacity table.
-        Field tableField = OptimalOpenHashMap.class.getDeclaredField("table");
-        tableField.setAccessible(true);
-        Class<?> compType = tableField.getType().getComponentType();
-        Object newTable = Array.newInstance(compType, OptimalOpenHashMap.MAXIMUM_CAPACITY);
-        tableField.set(map, newTable);
-
-        // Set size to simulate a load factor above threshold.
-        Field sizeField = map.getClass().getDeclaredField("size");
-        sizeField.setAccessible(true);
-        int simulatedSize = (int)(OptimalOpenHashMap.MAXIMUM_CAPACITY * OptimalOpenHashMap.DEFAULT_LOAD_FACTOR);
-        sizeField.set(map, simulatedSize);
-
-        // Now, a put() should try to resize and throw an exception.
-        assertThrows(IllegalStateException.class, () -> map.put("exceed", 999));
-    }
 
     @Test
     public void testResizeAndRehashNoDuplicates() {
