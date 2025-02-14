@@ -1,7 +1,13 @@
 package com.royvanrijn.optimalopen;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * OptimalOpenHashMap implements Map using open addressing with funnel probing.
@@ -39,13 +45,17 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V>, Serializable {
             this.value = value;
             return old;
         }
-        @Override public int hashCode() { return hash ^ Objects.hashCode(value); }
+        @Override public int hashCode() {
+            return Objects.hashCode(key) ^ Objects.hashCode(value);
+        }
         @Override public boolean equals(Object o) {
             if (!(o instanceof Map.Entry))
                 return false;
             Map.Entry<?, ?> e = (Map.Entry<?, ?>) o;
-            return hash == ((Entry<?, ?>) e).hash &&
-                    Objects.equals(key, e.getKey()) &&
+            if (o instanceof Entry<?, ?> && hash != ((Entry<?, ?>) e).hash) {
+                return false;
+            }
+            return Objects.equals(key, e.getKey()) &&
                     Objects.equals(value, e.getValue());
         }
         @Override public String toString() { return key + "=" + value; }
@@ -304,7 +314,8 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V>, Serializable {
 
     @Override
     public Set<Map.Entry<K, V>> entrySet() {
-        Set<Map.Entry<K, V>> set = new HashSet<>();
+        // TODO: rework it so modifications to the entry set are reflected in the map (e.g. remove)
+        Set<Map.Entry<K, V>> set = new LinkedHashSet<>();
         for (Entry<K, V> e : table) {
             if (e != null && e != TOMBSTONE) {
                 set.add(e);
@@ -315,7 +326,7 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V>, Serializable {
 
     @Override
     public Set<K> keySet() {
-        Set<K> set = new HashSet<>();
+        Set<K> set = new LinkedHashSet<>();
         for (Entry<K, V> e : table) {
             if (e != null && e != TOMBSTONE) {
                 set.add(e.getKey());
@@ -333,6 +344,46 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V>, Serializable {
             }
         }
         return values;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 0;
+        for (Map.Entry<K, V> entry : entrySet()) {
+            hash += entry.hashCode();
+        }
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+
+        if (!(o instanceof Map<?, ?>)) {
+            return false;
+        }
+
+        Map<?, ?> that = (Map<?, ?>) o;
+
+        if (that.size() != size()) {
+            return false;
+        }
+
+        for (Map.Entry<K, V> e : entrySet()) {
+            K key = e.getKey();
+            V value = e.getValue();
+            if (value == null) {
+                if (!(that.get(key) == null && that.containsKey(key))) {
+                    return false;
+                }
+            } else if (!value.equals(that.get(key))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     @Override
