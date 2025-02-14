@@ -1,4 +1,8 @@
-# OptimalOpenHashMap
+# OptimalOpenHashMap (in progress)
+
+## UPDATE:
+
+I haven't released the implementatino yet, this is a simpler linear probing version.
 
 **OptimalOpenHashMap** is a Java implementation of a hash map using open addressing with linear probing. This implementation is inspired by the paper "[Optimal Bounds for Open Addressing Without Reordering](https://arxiv.org/abs/2501.02305)" by Martín Farach-Colton, Andrew Krapivin, and William Kuszmaul (2025).
 
