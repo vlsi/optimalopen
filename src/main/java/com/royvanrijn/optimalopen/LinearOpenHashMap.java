@@ -125,7 +125,7 @@ public class LinearOpenHashMap<K, V> implements Map<K, V>, Serializable {
                 return null;
             if (e != TOMBSTONE && e.hash == hash && Objects.equals(e.key, key)) {
                 V oldVal = e.value;
-                table[idx] = (Entry<K, V>) TOMBSTONE;
+                table[idx] = TOMBSTONE;
                 size--;
                 tombstones++;
                 if (tombstones > capacity >> 2) {

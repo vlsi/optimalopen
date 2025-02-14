@@ -14,7 +14,7 @@ import java.util.*;
  */
 public class OptimalOpenHashMap<K, V> implements Map<K, V>, Serializable {
 
-    static final float DEFAULT_LOAD_FACTOR = 0.85f; // In theory this algorithm supports higher load factors
+    static final float DEFAULT_LOAD_FACTOR = 0.9f; // In theory this algorithm supports higher load factors
     static final int DEFAULT_INITIAL_CAPACITY = 1 << 4; // 16
     static final int MAXIMUM_CAPACITY = 1 << 30;
 
@@ -73,11 +73,11 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V>, Serializable {
         int levelWidth = capacity >>> 1;
         int offset = 0;
 
-        while (levelWidth > 0) {
-            int localAttempt = hash & (levelWidth - 1);
-            int idx = offset + localAttempt;
+        do {
+            int levelIndex = hash & (levelWidth - 1);
+            int tableIndex = offset + levelIndex;
 
-            Entry<K, V> entry = table[idx];
+            Entry<K, V> entry = table[tableIndex];
             if (entry == null) {
                 return null;
             }
@@ -87,7 +87,9 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V>, Serializable {
             // Move to next level
             offset |= levelWidth;
             levelWidth >>>= 1;
-        }
+
+        } while(levelWidth > 0);
+
         return null;
     }
 
@@ -105,23 +107,24 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V>, Serializable {
 
         int tombstoneIndex = -1; // fill gaps
 
-        int levelWidth = capacity >>> 1; // first level size (half the table)
+        int levelWidth = capacity >>> 1;
         int offset = 0;
 
-        while (levelWidth > 0) {
-            int localAttempt = hash & (levelWidth - 1);
-            int idx = offset + localAttempt;
+        do {
+            int levelIndex = hash & (levelWidth - 1);
+            int tableIndex = offset + levelIndex;
 
-            Entry<K, V> entry = table[idx];
+            // Actual put() logic:
+            Entry<K, V> entry = table[tableIndex];
             if (entry == null || (entry != TOMBSTONE && entry.hash == hash && key.equals(entry.key))) {
-                Entry<K, V> e = tab[idx];
+                Entry<K, V> e = tab[tableIndex];
                 if (e == null) {
                     if (tombstoneIndex != -1) {
                         // its a new entry, override the last tombstone:
-                        idx = tombstoneIndex;
+                        tableIndex = tombstoneIndex;
                         tombstones--;
                     }
-                    tab[idx] = new Entry<>(key, value, hash);
+                    tab[tableIndex] = new Entry<>(key, value, hash);
                     size++;
                     return null;
                 } else {
@@ -130,13 +133,15 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V>, Serializable {
                     return oldVal;
                 }
             } else if(entry == TOMBSTONE && tombstoneIndex == -1) {
-                tombstoneIndex = idx;
+                tombstoneIndex = tableIndex;
             }
 
             // Move to next level
             offset |= levelWidth;
             levelWidth >>>= 1;
-        }
+        } while (levelWidth > 0);
+
+
         resize();
         return put(key, value);
     }
@@ -149,17 +154,17 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V>, Serializable {
         int levelWidth = capacity >>> 1;
         int offset = 0;
 
-        while (levelWidth > 0) {
-            int localAttempt = hash & (levelWidth - 1);
-            int idx = offset + localAttempt;
+        do {
+            int levelIndex = hash & (levelWidth - 1);
+            int tableIndex = offset + levelIndex;
 
-            Entry<K, V> entry = table[idx];
+            Entry<K, V> entry = table[tableIndex];
             if (entry == null) {
                 return null;
             }
             if (entry != TOMBSTONE && entry.hash == hash && Objects.equals(entry.key, key)) {
                 V oldVal = entry.value;
-                table[idx] = TOMBSTONE;
+                table[tableIndex] = TOMBSTONE;
                 size--;
                 tombstones++;
                 // If the amount of tombstones becomes larger than 25%, clean up:
@@ -168,10 +173,13 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V>, Serializable {
                 }
                 return oldVal;
             }
+
             // Move to next level
             offset |= levelWidth;
             levelWidth >>>= 1;
-        }
+
+        } while (levelWidth > 0);
+
         return null;
     }
 
@@ -216,23 +224,25 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V>, Serializable {
      * @return      The computed index, or -1 if no available slot is found.
      */
     public int funnelProbe(Object key, int hash) {
-        int levelWidth = capacity >>> 1; // first level size (half the table)
+
+        int levelWidth = capacity >>> 1;
         int offset = 0;
 
-        while (levelWidth > 0) {
-            int localAttempt = hash & (levelWidth - 1);
-            int idx = offset + localAttempt;
+        do {
+            int levelIndex = hash & (levelWidth - 1);
+            int tableIndex = offset + levelIndex;
 
-            Entry<K, V> entry = table[idx];
+            Entry<K, V> entry = table[tableIndex];
             if (entry == null || (entry != TOMBSTONE && entry.hash == hash && key.equals(entry.key))) {
                 // to avoid doing this twice this funnelProbe has been inlined into get(), put(), remove().
-                return idx;
+                return tableIndex;
             }
 
             // Move to next level
             offset |= levelWidth;
             levelWidth >>>= 1;
-        }
+
+        } while (levelWidth > 0);
 
         // not found.
         return -1;
