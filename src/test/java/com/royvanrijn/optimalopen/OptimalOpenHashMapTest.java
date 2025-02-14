@@ -196,10 +196,6 @@ public class OptimalOpenHashMapTest {
     public void testMaxCapacityExceeded() throws Exception {
         OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
         // Use reflection to set the internal table to a maximum capacity table.
-        Field capacityField = map.getClass().getDeclaredField("capacity");
-        capacityField.setAccessible(true);
-        capacityField.set(map, OptimalOpenHashMap.MAXIMUM_CAPACITY);
-
         Field tableField = OptimalOpenHashMap.class.getDeclaredField("table");
         tableField.setAccessible(true);
         Class<?> compType = tableField.getType().getComponentType();
