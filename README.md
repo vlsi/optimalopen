@@ -4,9 +4,9 @@
 
 ## Features
 
-- **High Load Factor**: Could/should work with a load factor up to 0.95, having good memory utilization.
+- **High Load Factor**: Could/should work with a load factor up to >0.9, having good memory utilization.
 - **Lazy Deletion**: Employs tombstones for deletions, with periodic cleanup when tombstones exceed a defined threshold.
-- **Performance**: Demonstrates competitive performance compared to Java's standard `HashMap`.
+- **Performance**: Demonstrates competitive performance compared to Java's standard `HashMap`, slightly worse in the JMH benchmark.
 
 ## Status and warning
 
@@ -18,34 +18,31 @@ I'm not following the paper to every detail, I'm trying to keep the code perform
 
 ## Usage
 
-Take `OptimalOpenHashMap.java` and add it to your project.
-
-`OptimalOpenHashMap` implements `Map<K, V>` so it could be used as a drop-in replacement for most current HashMap's.
+`OptimalOpenHashMap` implements `Map<K, V>` so it could be used as a drop-in replacement for most current HashMap's, but: **Don't**. Just don't use it.
 
 ### Performance
 
-Again, no rigurous performance testing has been done, apart from a very simple comparison with inserts/retrieval/deletions.
+Again, no rigorous performance testing has been done, apart from a very simple comparison with inserts/retrieval/deletions.
 
 ```
-Starting performance tests...
-Warming up HashMap...
-Insertion time: 3401 ms
-Retrieval time: 911 ms
-Deletion time: 666 ms
-HashMap full benchmark total time: 4978 ms
----------------------------------------
-Warming up OptimalOpenHashMap...
-Insertion time: 3255 ms
-Retrieval time: 969 ms
-Deletion time: 748 ms
-OptimalOpenHashMap full benchmark total time: 4972 ms
+Benchmark            (mapType)   Mode  Cnt    Score     Error  Units
+
+JMHBenchmark.get           JDK  thrpt    3  184,710 ± 262,495  ops/s
+JMHBenchmark.get       OPTIMAL  thrpt    3  126,351 ±  22,330  ops/s
+JMHBenchmark.get        LINEAR  thrpt    3   60,854 ±  26,275  ops/s
+
+JMHBenchmark.put           JDK  thrpt    3   16,162 ±   6,293  ops/s
+JMHBenchmark.put       OPTIMAL  thrpt    3   13,890 ±   2,262  ops/s
+JMHBenchmark.put        LINEAR  thrpt    3    4,883 ±   0,382  ops/s
+
+JMHBenchmark.remove        JDK  thrpt    3   16,452 ±   7,423  ops/s
+JMHBenchmark.remove    OPTIMAL  thrpt    3   13,950 ±   3,428  ops/s
+JMHBenchmark.remove     LINEAR  thrpt    3    4,987 ±   0,303  ops/s
 ```
 
-(a simpler linear version of this code was even ~20% faster)
+These results indicate that `OptimalOpenHashMap` might be a viable option (compared to my simple linear implementation), however currently it is still slower across the board.
 
-These results indicate that `OptimalOpenHashMap` might be a viable option, showing faster retrieval and deletion times, with much better memory utilization.
-
-Remember that HashMap has been tweaked and optimized over years and years, this is barely working.
+Remember though that HashMap has been tweaked and optimized over years and years, this is barely working.
 
 ### Contributing
 

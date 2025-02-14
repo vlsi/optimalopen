@@ -13,11 +13,11 @@ import java.util.Random;
 
 import org.junit.jupiter.api.Test;
 
-public class OptimalOpenHashMapTest {
+public class LinearOpenHashMapTest {
 
     @Test
     public void testPutAndGetNull() {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> map = new LinearOpenHashMap<>();
         map.put("null", null);
 
         assertEquals(1, map.size());
@@ -27,7 +27,7 @@ public class OptimalOpenHashMapTest {
 
     @Test
     public void testPutAndGet() {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> map = new LinearOpenHashMap<>();
         map.put("one", 1);
         map.put("two", 2);
         map.put("three", 3);
@@ -39,7 +39,7 @@ public class OptimalOpenHashMapTest {
 
     @Test
     public void testOverwriteValue() {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> map = new LinearOpenHashMap<>();
         map.put("key", 1);
         map.put("key", 2);
         assertEquals(2, map.get("key"));
@@ -47,7 +47,7 @@ public class OptimalOpenHashMapTest {
 
     @Test
     public void testRemove() {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> map = new LinearOpenHashMap<>();
         map.put("key", 1);
         assertEquals(1, map.remove("key"));
         assertNull(map.get("key"));
@@ -55,7 +55,7 @@ public class OptimalOpenHashMapTest {
 
     @Test
     public void testContainsKey() {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> map = new LinearOpenHashMap<>();
         map.put("key", 1);
         assertTrue(map.containsKey("key"));
         assertFalse(map.containsKey("nonexistent"));
@@ -63,7 +63,7 @@ public class OptimalOpenHashMapTest {
 
     @Test
     public void testIsEmptyAndSize() {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> map = new LinearOpenHashMap<>();
         assertTrue(map.isEmpty());
         map.put("key", 1);
         assertFalse(map.isEmpty());
@@ -72,7 +72,7 @@ public class OptimalOpenHashMapTest {
 
     @Test
     public void testResizeAndRehash() {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> map = new LinearOpenHashMap<>();
         // Insert enough keys to force a resize.
         int total = 200; // adjust to force rehashing beyond initial capacity.
         for (int i = 0; i < total; i++) {
@@ -86,7 +86,7 @@ public class OptimalOpenHashMapTest {
 
     @Test
     public void testPutAllAndClear() {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> map = new LinearOpenHashMap<>();
         Map<String, Integer> source = new HashMap<>();
         source.put("a", 1);
         source.put("b", 2);
@@ -108,7 +108,7 @@ public class OptimalOpenHashMapTest {
     public void testRandomOperationsComparison() {
         // We'll perform a sequence of random operations on both maps and then compare their behavior.
         Map<String, Integer> jdkMap = new HashMap<>();
-        OptimalOpenHashMap<String, Integer> optMap = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> optMap = new LinearOpenHashMap<>();
         Random rand = new Random(42);
         int operations = 1000;
         int keySpace = 100; // keys will be "key0" .. "key99"
@@ -141,35 +141,35 @@ public class OptimalOpenHashMapTest {
 
     @Test
     public void testNullKeyGet() {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> map = new LinearOpenHashMap<>();
         // get(null) is defined to return null.
         assertNull(map.get(null));
     }
 
     @Test
     public void testNullKeyPut() {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> map = new LinearOpenHashMap<>();
         // put(null, value) should throw a NullPointerException
         assertThrows(NullPointerException.class, () -> map.put(null, 1));
     }
 
     @Test
     public void testNullKeyRemove() {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> map = new LinearOpenHashMap<>();
         // remove(null) should return null
         assertNull(map.remove(null));
     }
 
     @Test
     public void testPutAllNull() {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> map = new LinearOpenHashMap<>();
         // putAll(null) should throw a NullPointerException
         assertThrows(NullPointerException.class, () -> map.putAll(null));
     }
 
     @Test
     public void testPutTombstoneBehavior() {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> map = new LinearOpenHashMap<>();
         // Insert a key, then remove it to create a tombstone.
         map.put("a", 100);
         assertEquals(100, map.remove("a"));
@@ -188,7 +188,7 @@ public class OptimalOpenHashMapTest {
 
     @Test
     public void testResizeAndRehashNoDuplicates() {
-        OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
+        LinearOpenHashMap<String, Integer> map = new LinearOpenHashMap<>();
         // Insert keys to force at least one resize.
         int total = 200;
         for (int i = 0; i < total; i++) {
