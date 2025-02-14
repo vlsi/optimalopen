@@ -4,15 +4,17 @@
 
 ## Features
 
-- **High Load Factor**: Allows a load factor up to 0.95 for efficient memory utilization.
+- **High Load Factor**: Could/should work with a load factor up to 0.95, having good memory utilization.
 - **Lazy Deletion**: Employs tombstones for deletions, with periodic cleanup when tombstones exceed a defined threshold.
 - **Performance**: Demonstrates competitive performance compared to Java's standard `HashMap`.
 
-## Warning
+## Status and warning
 
-This is just an example implementation, it is not fully tested and will probably fail on edge cases.
+This is just an **example** implementation, it is not fully tested and will probably fail on edge cases.
 
-Use this in your projects at your own risk.
+Don't use in production code.
+
+I'm not following the paper to every detail, I'm trying to keep the code performant as well. There are quite a few tweaks to try and pieces of code to optimize left.
 
 ## Usage
 
@@ -27,19 +29,23 @@ Again, no rigurous performance testing has been done, apart from a very simple c
 ```
 Starting performance tests...
 Warming up HashMap...
-Insertion time: 3051 ms
-Retrieval time: 1256 ms
-Deletion time: 960 ms
-HashMap full benchmark total time: 5267 ms
+Insertion time: 3401 ms
+Retrieval time: 911 ms
+Deletion time: 666 ms
+HashMap full benchmark total time: 4978 ms
 ---------------------------------------
 Warming up OptimalOpenHashMap...
-Insertion time: 3018 ms
-Retrieval time: 772 ms
-Deletion time: 553 ms
-OptimalOpenHashMap full benchmark total time: 4343 ms
+Insertion time: 3255 ms
+Retrieval time: 969 ms
+Deletion time: 748 ms
+OptimalOpenHashMap full benchmark total time: 4972 ms
 ```
 
-These results indicate that `OptimalOpenHashMap` might be a viable option, showing faster retrieval and deletion times, with much better memory utilization (using a load factor of 90% instead of 75%).
+(a simpler linear version of this code was even ~20% faster)
+
+These results indicate that `OptimalOpenHashMap` might be a viable option, showing faster retrieval and deletion times, with much better memory utilization.
+
+Remember that HashMap has been tweaked and optimized over years and years, this is barely working.
 
 ### Contributing
 
