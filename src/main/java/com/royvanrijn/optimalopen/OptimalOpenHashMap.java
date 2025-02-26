@@ -19,7 +19,8 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V>, Serializable {
     static final int MAXIMUM_CAPACITY = 1 << 30;
 
     // Unique tombstone marker.
-    private final Entry<K, V> TOMBSTONE = new Entry<>(null, null, -1);
+    @SuppressWarnings("rawtypes")
+    private static final Entry TOMBSTONE = new Entry<>(null, null, -1);
 
     private static class Entry<K, V> implements Map.Entry<K, V>, Serializable {
 
