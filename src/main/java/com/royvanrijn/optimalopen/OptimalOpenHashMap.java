@@ -288,7 +288,9 @@ public class OptimalOpenHashMap<K, V> implements Map<K, V>, Serializable {
 
     @Override public int size() { return size; }
     @Override public boolean isEmpty() { return size == 0; }
-    @Override public boolean containsKey(Object key) { return get(key) != null; }
+    @Override public boolean containsKey(Object key) {
+        return funnelProbe(key, hash(key)) != -1;
+    }
     @Override public boolean containsValue(Object value) {
         for (Entry<K, V> e : table) {
             if (e != null && e != TOMBSTONE && Objects.equals(e.value, value))

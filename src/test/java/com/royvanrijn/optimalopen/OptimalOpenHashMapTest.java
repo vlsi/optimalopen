@@ -57,8 +57,10 @@ public class OptimalOpenHashMapTest {
     public void testContainsKey() {
         OptimalOpenHashMap<String, Integer> map = new OptimalOpenHashMap<>();
         map.put("key", 1);
+        map.put("nullvalue", null);
         assertTrue(map.containsKey("key"));
         assertFalse(map.containsKey("nonexistent"));
+        assertTrue( map.containsKey("nullvalue"), "containsKey(nullvalue) should return true as the key is present with null value");
     }
 
     @Test
